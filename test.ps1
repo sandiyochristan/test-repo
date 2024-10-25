@@ -9,6 +9,25 @@ function Format-Output {
     Write-Host ""
 }
 
+# Check for Hypervisor
+function Get-HypervisorInfo {
+    if ((Get-WmiObject -Class Win32_ComputerSystem).HypervisorPresent) {
+        return "Hyper-V"
+    } elseif (Get-WmiObject -Query "SELECT * FROM Win32_ComputerSystemProduct WHERE Version LIKE 'VirtualBox%'") {
+        return "VirtualBox"
+    } elseif (Get-WmiObject -Query "SELECT * FROM Win32_ComputerSystemProduct WHERE Version LIKE 'VMware%'") {
+        return "VMware"
+    } elseif ($env:AZURE_VM_NAME) {
+        return "Azure VM"
+    } elseif ($env:AWS_EXECUTION_ENV) {
+        return "AWS VM"
+    } elseif ($env:GCP_PROJECT) {
+        return "Google Cloud VM"
+    } else {
+        return "Physical Server"
+    }
+}
+
 # Get OS Information
 $os = Get-CimInstance Win32_OperatingSystem
 $osInfo = [PSCustomObject]@{
@@ -48,26 +67,10 @@ $diskInfo = foreach ($disk in $disks) {
     }
 }
 
-# Check for Hypervisor
-$hypervisorInfo = if ((Get-WmiObject -Class Win32_ComputerSystem).HypervisorPresent) {
-    "Hyper-V"
-} elseif (Get-WmiObject -Query "SELECT * FROM Win32_ComputerSystemProduct WHERE Version LIKE 'VirtualBox%'") {
-    "VirtualBox"
-} elseif (Get-WmiObject -Query "SELECT * FROM Win32_ComputerSystemProduct WHERE Version LIKE 'VMware%'") {
-    "VMware"
-} elseif ($env:AZURE_VM_NAME) {
-    "Azure"
-} elseif ($env:AWS_EXECUTION_ENV) {
-    "AWS"
-} elseif ($env:GCP_PROJECT) {
-    "Google Cloud Platform"
-} else {
-    "Not Running on a Hypervisor"
-}
-
-# Output Hypervisor Information
+# Get Hypervisor Information
+$hypervisorInfo = Get-HypervisorInfo
 $hypervisorDetails = [PSCustomObject]@{
-    "Hypervisor" = $hypervisorInfo
+    "Environment" = $hypervisorInfo
 }
 
 # Display all information
@@ -75,4 +78,4 @@ Format-Output -Title "Operating System Information" -Data $osInfo
 Format-Output -Title "Computer System Information" -Data $computerInfo
 Format-Output -Title "Processor Information" -Data $processorInfo
 Format-Output -Title "Disk Information" -Data $diskInfo
-Format-Output -Title "Hypervisor Information" -Data $hypervisorDetails
+Format-Output -Title "Environment Information" -Data $hypervisorDetails
